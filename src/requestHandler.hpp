@@ -4,10 +4,14 @@
 #include <pistache/endpoint.h>
 
 using namespace Pistache;
-class AliveHandler : public Http::Handler {
+
+class RequestHandler : public Http::Handler {
 public:
-    HTTP_PROTOTYPE(AliveHandler)
+    HTTP_PROTOTYPE(RequestHandler)
     void onRequest(const Http::Request& request, Http::ResponseWriter response) override;
 };
+
+// TODO: change this to an actual router
+void prepareEndpoints();
 
 #endif //ALIVEHANDLER_HPP
