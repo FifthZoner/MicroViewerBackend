@@ -5,6 +5,7 @@
 #include "requestHandler.hpp"
 #include "increment.hpp"
 #include "queryService.hpp"
+#include "pistache/description.h"
 
 using namespace Pistache;
 
@@ -21,10 +22,11 @@ int main()
     Http::Endpoint server(addr);
     server.init(opts);
 
-    server.setHandler(Http::make_handler<RequestHandler>());
-
     // prepares all the endpoint handling
-    prepareEndpoints();
+    Rest::Router router;
+    prepareEndpoints(router);
+
+    server.setHandler(router.handler());
 
     std::cout << "Pistache server ready!\n";
     std::cout << "Preparing query service...\n";

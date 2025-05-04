@@ -2,6 +2,7 @@
 #define ALIVEHANDLER_HPP
 
 #include <pistache/endpoint.h>
+#include <pistache/router.h>
 
 using namespace Pistache;
 
@@ -12,6 +13,6 @@ public:
 };
 
 // TODO: change this to an actual router
-void prepareEndpoints();
+void prepareEndpoints(Rest::Router& router);
 
 #endif //ALIVEHANDLER_HPP

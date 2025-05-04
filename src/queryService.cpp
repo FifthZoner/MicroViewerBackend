@@ -21,6 +21,7 @@ bool startQueryService(std::string connectionString, uint16_t transactionsLimit)
 
     // getting the first connection
     try {
+        std::cout << "Connecting to database...\n";
         connections[0].conn = std::make_unique<pqxx::connection>(serviceConnectionString);
     }
     catch (std::exception& e)
@@ -49,6 +50,7 @@ pqxx::work& startTransaction() {
         for (auto& n : connections) if (n.work == nullptr) {
             if (n.conn == nullptr or not n.conn->is_open()) {
                 try {
+                    std::cout << "Connecting to database...\n";
                     n.conn = std::make_unique<pqxx::connection>(serviceConnectionString);
                 }
                 catch (std::exception& e)
