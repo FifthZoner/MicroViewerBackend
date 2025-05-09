@@ -2,8 +2,8 @@
 echo "PRE_BUILD: Adding new build number..."
 oldnum=`cut -d ',' -f2 BuildNumberCache.txt`
 newnum=`expr $oldnum + 1`
-version="0.0.1 (tests)"
-apiVersion="0"
+version="0.1 (simple gets)"
+apiVersion="1"
 echo "$newnum" > BuildNumberCache.txt
 echo "#ifndef INCREMENTED_VALUE" > src/misc/increment.hpp
 echo "#define INCREMENTED_VALUE" >> src/misc/increment.hpp

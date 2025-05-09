@@ -68,9 +68,11 @@ pqxx::work& startTransaction() {
                 }
             }
             n.work = std::make_unique<pqxx::work>(*n.conn);
+            transactionLock.unlock();
             return *n.work;
         }
         transactionLock.unlock();
+        sleep(50);
     }
 }
 
@@ -102,6 +104,6 @@ void cancelTransaction(pqxx::work& db) {
         }
     }
     transactionLock.unlock();
-    std::cout << "ERROR: could not find the transaction to commit!";
+    std::cout << "ERROR: could not find the transaction to cancel!";
     throw new std::exception();
 }

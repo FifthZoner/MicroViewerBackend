@@ -33,9 +33,14 @@ add_custom_command(
         COMMAND echo PRE_BUILD: Pistache build success!
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/Pistache)
 
-include_directories(${INCLUDE_DIRS} "${PROJECT_BINARY_DIR}/Pistache/include/")
-
 add_dependencies(${PROJECT_NAME} PistacheBuild)
+
+# RapidJSON for returning data
+include(FetchContent)
+FetchContent_Declare(RapidJSON
+        GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+        SOURCE_DIR "RapidJSON")
+FetchContent_MakeAvailable(RapidJSON)
 
 # Postgresql binding
 find_package(libpqxx REQUIRED)
@@ -49,6 +54,8 @@ add_custom_command(
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 
 add_dependencies(${PROJECT_NAME} IncrementBuildNumber)
+
+include_directories(${INCLUDE_DIRS} "${PROJECT_BINARY_DIR}/Pistache/include/" "${PROJECT_BINARY_DIR}/RapidJSON/include/")
 
 # check added so that cmake is happy when the dir doesn't exist yet
 if (EXISTS "${PROJECT_BINARY_DIR}/Pistache/build/src/libpistache.so")
