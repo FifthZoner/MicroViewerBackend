@@ -43,7 +43,12 @@ FetchContent_Declare(RapidJSON
 FetchContent_MakeAvailable(RapidJSON)
 
 # Postgresql binding
-find_package(libpqxx REQUIRED)
+#find_package(libpqxx REQUIRED)
+include(FetchContent)
+FetchContent_Declare(libpqxx
+        GIT_REPOSITORY https://github.com/jtv/libpqxx.git
+        SOURCE_DIR "libpqxx")
+FetchContent_MakeAvailable(libpqxx)
 
 add_custom_target(IncrementBuildNumber)
 add_custom_command(
@@ -55,9 +60,15 @@ add_custom_command(
 
 add_dependencies(${PROJECT_NAME} IncrementBuildNumber)
 
-include_directories(${INCLUDE_DIRS} "${PROJECT_BINARY_DIR}/Pistache/include/" "${PROJECT_BINARY_DIR}/RapidJSON/include/")
+include_directories(${INCLUDE_DIRS} "${PROJECT_BINARY_DIR}/Pistache/include/" "${PROJECT_BINARY_DIR}/RapidJSON/include/" "${PROJECT_BINARY_DIR}/libpqxx/include/")
 
 # check added so that cmake is happy when the dir doesn't exist yet
 if (EXISTS "${PROJECT_BINARY_DIR}/Pistache/build/src/libpistache.so")
+    target_link_libraries(${PROJECT_NAME} "${PROJECT_BINARY_DIR}/Pistache/build/src/libpistache.so" pqxx)
+else()
+    message("First compilation, creating a libpistache.so dummy, it will be recreated before linking")
+    file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/Pistache/build")
+    file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/Pistache/build/src")
+    file(TOUCH "${PROJECT_BINARY_DIR}/Pistache/build/src/libpistache.so")
     target_link_libraries(${PROJECT_NAME} "${PROJECT_BINARY_DIR}/Pistache/build/src/libpistache.so" pqxx)
 endif()
