@@ -9,8 +9,6 @@
 using namespace rapidjson;
 
 void RequestHandler::onRequest(const Http::Request& request, Http::ResponseWriter response) {
-
-    auto& path = request.resource();
 }
 
 void endpoint_alive(const Rest::Request& request, Http::ResponseWriter response) {
@@ -83,7 +81,7 @@ void endpoint_getCategory(const Rest::Request& request, Http::ResponseWriter res
     try {
         id = param.as<uint64_t>();
     }
-    catch (std::exception& e) {
+    catch (std::exception&) {
         std::cout << "INVALID: Parameter id must be an unsigned 64!";
         response.send(Http::Code::Bad_Request, "Parameter id must be an unsigned 64!");
         return;
@@ -170,7 +168,7 @@ void endpoint_getManufacturer(const Rest::Request& request, Http::ResponseWriter
     try {
         id = param.as<uint64_t>();
     }
-    catch (std::exception& e) {
+    catch (std::exception&) {
         std::cout << "INVALID: Parameter id must be an unsigned 64!";
         response.send(Http::Code::Bad_Request, "Parameter id must be an unsigned 64!");
         return;
@@ -222,7 +220,7 @@ void endpoint_getDetails(const Rest::Request& request, Http::ResponseWriter resp
     try {
         id = param.as<uint64_t>();
     }
-    catch (std::exception& e) {
+    catch (std::exception&) {
         std::cout << "INVALID: Parameter id must be an unsigned 64!";
         response.send(Http::Code::Bad_Request, "Parameter id must be an unsigned 64!");
         return;
@@ -283,20 +281,53 @@ void endpoint_getSearch(const Rest::Request& request, Http::ResponseWriter respo
     try {
         name = param.as<std::string>();
     }
-    catch (std::exception& e) {
+    catch (std::exception&) {
         std::cout << "INVALID: Parameter name must be a string!";
         response.send(Http::Code::Bad_Request, "Parameter name must be a string!");
         return;
     }
 
-    // checking for SQL injection
+    // replacing %20 with spaces
+    size_t pos;
+    while ((pos = name.find("%20")) != std::string::npos) name.replace(pos, 3, " ");
     std::cout << "FOLLOWUP: Searched name: " << name << "\n";
 
+    // checking for SQL injection
     if (not IsSafe(name)) {
         std::cout << "ERROR: passed name for search is not safe!\n";
         response.send(Http::Code::Bad_Request, "Invalid search name format! An injection attempt?");
         return;
     }
+
+    // splitting the name up by spaces and adding them to the query
+    std::ranges::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    std::string query = "SELECT boa_id, boa_name FROM boards WHERE ";
+    bool isFirst = true;
+    uint64_t firstIndex = 0;
+    for (uint64_t n = 0; n < name.length(); n++) {
+        if (name[n] == ' ') {
+            if (n != firstIndex) {
+                if (not isFirst) query += "AND ";
+                else isFirst = false;
+                query += "LOWER(boa_name) LIKE '%" + name.substr(firstIndex, n - firstIndex) + "%' ";
+                firstIndex = n + 1;
+            }
+            else firstIndex = n + 1;
+        }
+    }
+
+    if (firstIndex != name.length()) {
+        if (not isFirst) query += "AND ";
+        else isFirst = false;
+        query += "LOWER(boa_name) LIKE '%" + name.substr(firstIndex) + "%' ";
+    }
+
+    if (isFirst) {
+        std::cout << "ERROR: passed name for search is empty!\n";
+        response.send(Http::Code::Bad_Request, "Empty search name string!");
+        return;
+    }
+
 
     StringBuffer buffer;
     Writer writer(buffer);
@@ -307,7 +338,7 @@ void endpoint_getSearch(const Rest::Request& request, Http::ResponseWriter respo
 
     auto& db = startTransaction();
     try {
-        auto result = db.query<uint64_t, std::string>("SELECT boa_id, boa_name FROM boards WHERE boa_name LIKE '%" + name + "%';");
+        auto result = db.query<uint64_t, std::string>(query);
         for (auto& [id, name] : result) {
             Value member(kObjectType);
             member.AddMember("boa_name", Value(kStringType).SetString(name.c_str(), static_cast<SizeType>(name.length()), document.GetAllocator()), document.GetAllocator());
