@@ -263,7 +263,72 @@ void endpoint_getDetails(const Rest::Request& request, Http::ResponseWriter resp
     response.send(Http::Code::Ok, buffer.GetString());
 }
 
+auto unsafeCharacters = std::to_array<char>({'\'', '"', '*', '=', ';'});
+// a very simple injection check
+bool IsSafe(const std::string& string) {
+    for (const auto& n : unsafeCharacters) if (string.contains(n)) return false;
+    return true;
+}
 
+void endpoint_getSearch(const Rest::Request& request, Http::ResponseWriter response) {
+    std::cout << "REQUEST: Search request from: " << request.address() << "\n";
+
+    std::string name;
+    if (not request.hasParam(":name")) {
+        std::cout << "INVALID: No name parameter!";
+        response.send(Http::Code::Bad_Request, "No name parameter!");
+        return;
+    }
+    auto param = request.param(":name");
+    try {
+        name = param.as<std::string>();
+    }
+    catch (std::exception& e) {
+        std::cout << "INVALID: Parameter name must be a string!";
+        response.send(Http::Code::Bad_Request, "Parameter name must be a string!");
+        return;
+    }
+
+    // checking for SQL injection
+    std::cout << "FOLLOWUP: Searched name: " << name << "\n";
+
+    if (not IsSafe(name)) {
+        std::cout << "ERROR: passed name for search is not safe!\n";
+        response.send(Http::Code::Bad_Request, "Invalid search name format! An injection attempt?");
+        return;
+    }
+
+    StringBuffer buffer;
+    Writer writer(buffer);
+
+    Document document;
+    document.SetObject();
+    Value array(kArrayType);
+
+    auto& db = startTransaction();
+    try {
+        auto result = db.query<uint64_t, std::string>("SELECT boa_id, boa_name FROM boards WHERE boa_name LIKE '%" + name + "%';");
+        for (auto& [id, name] : result) {
+            Value member(kObjectType);
+            member.AddMember("boa_name", Value(kStringType).SetString(name.c_str(), static_cast<SizeType>(name.length()), document.GetAllocator()), document.GetAllocator());
+            member.AddMember("boa_id", Value(kNumberType).SetUint64(id), document.GetAllocator());
+            array.PushBack(member, document.GetAllocator());
+        }
+        commitTransaction(db);
+    }
+    catch (std::exception& e) {
+        std::cout << "ERROR: Search request: " << e.what() << "\n";
+        response.send(Http::Code::Internal_Server_Error, "");
+        cancelTransaction(db);
+        return;
+    }
+
+    document.AddMember("boards", array, document.GetAllocator());
+    document.Accept(writer);
+
+    response.headers().add<Http::Header::ContentType>(MIME(Application, Json));
+    response.send(Http::Code::Ok, buffer.GetString());
+}
 
 void prepareEndpoints(Rest::Router& router) {
     Rest::Routes::Get(router, "/",                  Rest::Routes::bind(&endpoint_alive));
@@ -273,4 +338,5 @@ void prepareEndpoints(Rest::Router& router) {
     Rest::Routes::Get(router, "/manufacturers",     Rest::Routes::bind(&endpoint_getManufacturers));
     Rest::Routes::Get(router, "/manufacturer/:id",  Rest::Routes::bind(&endpoint_getManufacturer));
     Rest::Routes::Get(router, "/details/:id",       Rest::Routes::bind(&endpoint_getDetails));
+    Rest::Routes::Get(router, "/search/:name",      Rest::Routes::bind(&endpoint_getSearch));
 }

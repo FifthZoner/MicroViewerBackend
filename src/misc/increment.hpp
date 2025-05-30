@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 
-const std::string incrementedVersionValue =  "0.1 (simple gets), build: 136 (2025-05-09)";
-constexpr uint64_t apiVersion =  1;
+const std::string incrementedVersionValue =  "0.2, build: 129 (2025-05-30)";
+constexpr uint64_t apiVersion =  2;
 
 #endif

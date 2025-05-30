@@ -8,6 +8,10 @@ insert into categories values (2, 'Single board computers');
 insert into categories values (3, 'Control boards');
 
 insert into manufacturers values (101, 'Bigtree-Tech', 'https://bigtree-tech.com/');
+insert into manufacturers values (102, '3D Mellow', 'https://3dmellow.com/');
+insert into manufacturers values (103, 'Fysetc', 'https://www.fysetc.com/');
+insert into manufacturers values (104, 'Raspberry Pi', 'https://bigtree-tech.com/');
+insert into manufacturers values (105, 'Orange Pi', 'http://www.orangepi.org/');
 
 insert into chips values (201, 'STM32F072', 'https://www.empowerlaptop.com/p/stm32f072rvt6/', 'https://www.st.com/en/microcontrollers-microprocessors/stm32f072rb.html#documentation');
 insert into chips values (202, 'STM32G0B1', 'https://www.mouser.tw/new/stmicroelectronics/stm-stm32g0b1-stm32g0c1-mcus/', 'https://www.st.com/en/microcontrollers-microprocessors/stm32g0-series/documentation.html');
