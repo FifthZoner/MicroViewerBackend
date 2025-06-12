@@ -235,8 +235,8 @@ void endpoint_getDetails(const Rest::Request& request, Http::ResponseWriter resp
     // TODO: checking if the id exists
     auto& db = startTransaction();
     try {
-        auto result = db.query<std::string, std::string, std::string, std::string, std::string, std::string, std::string, std::string>("SELECT boa_name, boa_image_link, man_name, cat_name, chi_name, boa_doc_link, boa_sch_link, boa_pin_link FROM boards LEFT JOIN chips ON chips.chi_id = boards.chi_id LEFT JOIN manufacturers m ON m.man_id = boards.man_id LEFT JOIN categories c ON c.cat_id = boards.cat_id WHERE boa_id = " + std::to_string(id) + ";");
-        for (auto& [boa_name, boa_image, man_name, cat_name, chi_name, boa_doc, boa_sch, boa_pin] : result) {
+        auto result = db.query<std::string, std::string, std::string, std::string, std::string, std::string, std::string, std::string, uint64_t>("SELECT boa_name, boa_image_link, man_name, cat_name, chi_name, boa_doc_link, boa_sch_link, boa_pin_link, boa_overlay_oid FROM boards LEFT JOIN chips ON chips.chi_id = boards.chi_id LEFT JOIN manufacturers m ON m.man_id = boards.man_id LEFT JOIN categories c ON c.cat_id = boards.cat_id WHERE boa_id = " + std::to_string(id) + ";");
+        for (auto& [boa_name, boa_image, man_name, cat_name, chi_name, boa_doc, boa_sch, boa_pin, boa_overlay_oid] : result) {
             document.AddMember("boa_name", Value(kStringType).SetString(boa_name.c_str(), boa_name.length(), document.GetAllocator()), document.GetAllocator());
             document.AddMember("boa_image", Value(kStringType).SetString(boa_image.c_str(), boa_image.length(), document.GetAllocator()), document.GetAllocator());
             document.AddMember("man_name", Value(kStringType).SetString(man_name.c_str(), man_name.length(), document.GetAllocator()), document.GetAllocator());
@@ -245,6 +245,7 @@ void endpoint_getDetails(const Rest::Request& request, Http::ResponseWriter resp
             document.AddMember("boa_doc", Value(kStringType).SetString(boa_doc.c_str(), boa_doc.length(), document.GetAllocator()), document.GetAllocator());
             document.AddMember("boa_sch", Value(kStringType).SetString(boa_sch.c_str(), boa_sch.length(), document.GetAllocator()), document.GetAllocator());
             document.AddMember("boa_pin", Value(kStringType).SetString(boa_pin.c_str(), boa_pin.length(), document.GetAllocator()), document.GetAllocator());
+            document.AddMember("boa_overlay_oid", Value(kNumberType).SetUint64(boa_overlay_oid), document.GetAllocator());
         }
         commitTransaction(db);
     }
@@ -361,6 +362,52 @@ void endpoint_getSearch(const Rest::Request& request, Http::ResponseWriter respo
     response.send(Http::Code::Ok, buffer.GetString());
 }
 
+void endpoint_getImage(const Rest::Request& request, Http::ResponseWriter response) {
+    std::cout << "REQUEST: Image request from: " << request.address() << "\n";
+
+    uint64_t id = 0;
+    if (not request.hasParam(":id")) {
+        std::cout << "INVALID: No id parameter!";
+        response.send(Http::Code::Bad_Request, "No id parameter!");
+        return;
+    }
+    auto param = request.param(":id");
+    try {
+        id = param.as<uint64_t>();
+    }
+    catch (std::exception&) {
+        std::cout << "INVALID: Parameter id must be an unsigned 64!";
+        response.send(Http::Code::Bad_Request, "Parameter id must be an unsigned 64!");
+        return;
+    }
+
+    StringBuffer buffer;
+    Writer writer(buffer);
+
+    Document document;
+    document.SetObject();
+
+    auto& db = startTransaction();
+    try {
+        auto result = db.query<std::string>("SELECT replace(encode(lo_get(" + std::to_string(id) + ")::bytea, 'base64'), E'\n', '')");
+        for (auto& [image] : result) {
+            document.AddMember("image", Value(kStringType).SetString(image.c_str(), image.length(), document.GetAllocator()), document.GetAllocator());
+        }
+        commitTransaction(db);
+    }
+    catch (std::exception& e) {
+        std::cout << "ERROR: Image request: " << e.what() << "\n";
+        response.send(Http::Code::Internal_Server_Error, "");
+        cancelTransaction(db);
+        return;
+    }
+
+    document.Accept(writer);
+
+    response.headers().add<Http::Header::ContentType>(MIME(Application, Json));
+    response.send(Http::Code::Ok, buffer.GetString());
+}
+
 void prepareEndpoints(Rest::Router& router) {
     Rest::Routes::Get(router, "/",                  Rest::Routes::bind(&endpoint_alive));
     Rest::Routes::Get(router, "/favicon.ico",       Rest::Routes::bind(&endpoint_favicon));
@@ -370,4 +417,5 @@ void prepareEndpoints(Rest::Router& router) {
     Rest::Routes::Get(router, "/manufacturer/:id",  Rest::Routes::bind(&endpoint_getManufacturer));
     Rest::Routes::Get(router, "/details/:id",       Rest::Routes::bind(&endpoint_getDetails));
     Rest::Routes::Get(router, "/search/:name",      Rest::Routes::bind(&endpoint_getSearch));
+    Rest::Routes::Get(router, "/image/:id",         Rest::Routes::bind(&endpoint_getImage));
 }
